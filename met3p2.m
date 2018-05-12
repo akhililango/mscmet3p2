@@ -1,7 +1,7 @@
 clear all
 close all
 clc
-profile on
+% profile on
 
 disp('Empirical pset 2, Metrics 3');
 
@@ -20,16 +20,15 @@ ty = dates_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
 n = size(Y,1);
 
 % defining Fourier Freq 
-omega = NaN(n,1);
-meanY = mean(Y);
-
+omega = zeros(n,1);
 for k = (n-1)/2:-1:1
     omega((n-1)/2-k+1,1) = -2*pi()*k/n;
     omega((n-1)/2+k+1,1) = 2*pi()*k/n;    
 end
 omega((n-1)/2+1,1) = 0;
 
-% finding all population autocov values
+% finding all sample autocov values
+meanY = mean(Y);
 gammaY = zeros(n,1);
 for k = 1:n
     for t = 1:n+1-k
@@ -37,7 +36,7 @@ for k = 1:n
     end
     gammaY(k) = gammaY(k)/(n+1-k);
 end
-rhoY = gammaY/gammaY(1);
+rhoY = gammaY/gammaY(1); %sample autocorrelation
 
 rhoYtest = autocorr(Y,n-1);
 gammaYtest = rhoYtest*var(Y);
@@ -47,7 +46,7 @@ gammaYtest = rhoYtest*var(Y);
 disp('Section 1');
 
 f11 = figure;
-set(f11,'Visible','off');
+%set(f11,'Visible','off');
 plot(ty,Y,'LineWidth',2);
 ax = gca;
 ax.XTick = ty(1:200:end);
@@ -60,17 +59,17 @@ axis tight;
 recessionplot;
 
 f12 = figure;
-set(f12,'Visible','off');
+%set(f12,'Visible','off');
 autocorr(Y)
 title('Returns: Autocorrelation')
 
 f13 = figure;
-set(f13,'Visible','off');
+%set(f13,'Visible','off');
 parcorr(Y)
 title('Returns: Partial Autocorrelation')
 
 f14 = figure;
-set(f14,'Visible','off');
+%set(f14,'Visible','off');
 histfit(Y,25,'kernel');
 line([mean(Y), mean(Y)], ylim, 'LineWidth',1,'Color','r','LineStyle','-.')
 line ([mean(Y)+std(Y) mean(Y)+std(Y) NaN mean(Y)-std(Y) ...
@@ -99,7 +98,7 @@ ty.FontWeight = 'bold';
 % subplot(2,1,2); 
 % PowerSpectrum=PlotFrequencySpectrum(datevar,Y,3,1,0);
 % hold on
-%% Periodogram from lecture
+%% 1.8. Periodogram from lecture
 perio = zeros(n,1);
 
 K = size(omega,1);
@@ -135,10 +134,11 @@ title('Periodogram')
 
 disp('graphs created')
 
-%% Algorithm 
+%% Pre-2. Algorithm on data (unnecessary)
 
 disp('testing algorithm')
-estim(Y, gammaY);
+[YhatInn, vInn] = innov(Y, gammaY);
+[YhatDL, vDL] = durblev(Y,gammaY);
 
 %% 2. Models and Estimation
 
@@ -174,5 +174,5 @@ saveas(f15,'Figure 1.5.jpeg');
 % saveas(f43,'Figure 4.3.png');
 % saveas(f44,'Figure 4.4.png');
 
-profile viewer
+% profile viewer
 %profsave;
