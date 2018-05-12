@@ -1,4 +1,4 @@
-function [YhatDL, vDL] = durblev(Y, gammaY)
+function [loglike, YhatDL, vDL] = durblev(Y, gammaY, thetaStart)
 
 T = size(Y,1);
 meanY = mean(Y);
