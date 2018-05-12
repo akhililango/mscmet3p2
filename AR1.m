@@ -41,7 +41,13 @@ options = optimset('TolX', 0.0001, 'Display', 'off', 'Maxiter', 5000, 'MaxFunEva
 %% DL/Inn and MLE
 
 for i = 1:runs
+    
 %      objfun = @(thetaStart)(-loglikeARMA(thetaStart, Y(:,i), epsY(:,i), p, q));
+%      [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
+%      disp(i)
+
+% ================
+
     % finding all sample autocov values
     meanY = mean(Y(:,i));
     gammaY = zeros(n,1);
@@ -51,19 +57,22 @@ for i = 1:runs
         end
         gammaY(k) = gammaY(k)/(n+1-k);
     end 
+    
 %     [YhatDL(:,i), vDL(:,i)] = durblev(Y(:,i), gammaY);
+%     [YhatInn(:,i), vInn(:.i)] = innov(Y, gammaY);
 
 % DL
-        objfun = @(thetaStart)(durblev(Y(:,i),gammaY));
+%         objfun = @(thetaStart)(durblev(Y(:,i),gammaY,thetaStart));
+%Inn        
+        objfun = @(thetaStart)(innov(Y(:,i),gammaY,thetaStart));
 %MLE    
         [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
     disp(i)
-        
-    
-%      [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
-%     disp(i)
+
 end
+
 vDL = abs(vDL);
+
 %% MLE
 
 % for i = 1:runs
