@@ -15,8 +15,10 @@ dates_ = table2array(data(:,2));
 ret_mean = mean(ret_);
 ret_var = var(ret_);
 ret_sd = sqrt(ret_var);
-Y = ret_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
-ty = dates_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
+Y = ret_;
+Y = Y(ret_ > ret_mean+4*ret_sd) = ret_mean+4*ret_sd;
+Y = Y(ret_ < ret_mean-4*ret_sd) = ret_mean-4*ret_sd;
+ty = dates_;
 n = size(Y,1);
 
 % defining Fourier Freq 
