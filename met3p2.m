@@ -24,10 +24,11 @@ low_bound = ret_mean-4*ret_sd*low_bound;
 Y = min(ret_, up_bound);
 Y = max(Y, low_bound);
 
-ty = dates_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
-n = size(Y,1);
+ty = dates_;
+
 
 % defining Fourier Freq 
+n = size(Y,1);
 omega = NaN(n,1);
 meanY = mean(Y);
 
@@ -38,12 +39,12 @@ end
 omega((n-1)/2+1,1) = 0;
 
 % finding all population autocov values
-gammaY = zeros(n,1);
+gammaY = zeros(n,1); %First element is actually what we call gammaY(0), and last one is gammaY(n-1)
 for k = 1:n
     for t = 1:n+1-k
         gammaY(k) = gammaY(k) + (Y(t)-meanY)*(Y(t+k-1)-meanY);
     end
-    gammaY(k) = gammaY(k)/(n+1-k);
+gammaY(k) = gammaY(k)/(n+1-k);
 end
 rhoY = gammaY/gammaY(1);
 
@@ -56,7 +57,7 @@ disp('Section 1');
 
 f11 = figure;
 set(f11,'Visible','off');
-plot(ty,Y,'LineWidth',2);
+plot(ty,Y);
 ax = gca;
 ax.XTick = ty(1:200:end);
 ax.XTickLabelRotation = 90;
@@ -66,16 +67,19 @@ ylabel('Returns');
 title('Returns: Time series')
 axis tight;
 recessionplot;
+saveas(f11,'Figure 1.1.jpeg');
 
 f12 = figure;
 set(f12,'Visible','off');
 autocorr(Y)
 title('Returns: Autocorrelation')
+saveas(f12,'Figure 1.2.jpeg');
 
 f13 = figure;
 set(f13,'Visible','off');
 parcorr(Y)
 title('Returns: Partial Autocorrelation')
+saveas(f13,'Figure 1.3.jpeg');
 
 f14 = figure;
 set(f14,'Visible','off');
@@ -89,9 +93,11 @@ a=annotation('textbox',...
     'String',{'Mean = 0.0806', 'Variance = 11.3179', 'Skewness = 0.1421','Kurtosis = 6.6538'},...
     'FitBoxToText','on','LineStyle','none');
 a.FontSize=10;
-ty=title('Returns: Empirical Density');
-ty.FontSize=10;
-ty.FontWeight = 'bold';
+tf14=title('Returns: Empirical Density');
+tf14.FontSize=10;
+tf14.FontWeight = 'bold';
+saveas(f14,'Figure 1.4.jpeg');
+
 
 
 % % % %  %
@@ -130,7 +136,7 @@ end
 
 f15 = figure
 % set(f15,'Visible','off');
-plot(omega,perio,'LineWidth',2)
+plot(omega,perio)
 ax = gca;
 ax.XTick = [-pi -pi/2 -pi/4 0 pi/4 pi/2 pi]
 ax.XTickLabel = {'-\pi -\pi/2 -\pi/4 0 \pi/4 \pi/2 \pi'}
@@ -140,47 +146,28 @@ ax.XTickLabelMode = 'auto'
 xlabel('Frequency')
 ylabel('Density')
 title('Periodogram')
+saveas(f15,'Figure 1.5.jpeg');
+
+ftest = figure
+% set(f15,'Visible','off');
+plot(omega,perio)
+
 
 disp('graphs created')
 
-%% Algorithm 
-
-disp('testing algorithm')
-estim(Y, gammaY);
 
 %% 2. Models and Estimation
 
 disp('Section 2');
 
+Y_sim = NaN(1000,1);
+Y_sim(1) = 0;
+epsilon = normrnd(0,0.2,[1000,1]);
+epsilon(1) = NaN;
+for t = 1:999
+    Y_sim(t+1)=0.9*Y_sim(t)+epsilon(t+1);
+end
 
-%% 3. sdfsdf
-
-disp('Section 3');
-
-
-%% 4 Pockets of Predictability
-
-disp('Section 4');
-
-
-%%
-%Save all plots
-saveas(f11,'Figure 1.1.jpeg');
-saveas(f12,'Figure 1.2.jpeg');
-saveas(f13,'Figure 1.3.jpeg');
-saveas(f14,'Figure 1.4.jpeg');
-saveas(f15,'Figure 1.5.jpeg');
-
-% saveas(f211,'Figure 2.1.1.png');
-% saveas(f212,'Figure 2.1.2.png');
-% saveas(f22,'Figure 2.2.png');
-% saveas(f31,'Figure 3.1.png');
-% saveas(f32,'Figure 3.2.png');
-% saveas(f33,'Figure 3.3.png');
-% saveas(f41,'Figure 4.1.png');
-% saveas(f42,'Figure 4.2.png');
-% saveas(f43,'Figure 4.3.png');
-% saveas(f44,'Figure 4.4.png');
-
-profile viewer
-%profsave;
+f_ar1=figure
+plot(Y_sim)
+set(f_ar1, 'Visible','on')
