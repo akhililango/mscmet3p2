@@ -3,15 +3,6 @@ function [loglike, YhatDL, vDL] = durblev(Y, thetaStart)
 T = size(Y,1);
 rng('default')
 
-% %Generate the AR(1) process
-% y(1) = Y(1);
-% for t = 1:T-1
-%    y(t+1) = thetaStart(1) + thetaStart(3)*y(t) + epsY(t+1);  
-% end
-% 
-% rhoY = autocorr(y,T-1);
-% gammaY = abs(rhoY*var(y));
-
 gammaY = gammaMA1(T, thetaStart);
 
 %Durbin Levinson
