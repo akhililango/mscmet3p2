@@ -1,0 +1,398 @@
+---
+title: "met3p2"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+0. Importing Data
+=================
+```{r 0. Importing Data}
+rm(list=ls())
+print('Empirical pset 2, Metrics 3')
+datas <- readxl::read_xlsx("AmazonData.xlsx")
+```
+
+```{r Cleaning}
+ret_ <- as.matrix(datas[,3])
+dates_ <- as.matrix(datas[,2])
+
+ret_mean = mean(ret_)
+ret_var = as.vector(var(ret_))
+ret_sd = as.vector(sqrt(ret_var))
+Y = ret_
+Y[(ret_ > ret_mean+4*ret_sd)] = ret_mean+4*ret_sd
+Y[(ret_ < ret_mean-4*ret_sd)] = ret_mean-4*ret_sd
+ty = dates_
+n = length(Y)
+```
+
+```{r defining Fourier Freq }
+meanY = as.vector(mean(Y));
+omega = matrix(nrow = n,ncol = 1)
+
+for (k in seq(from=(n-1)/2,to=1,by=-1)) {
+    omega[(n-1)/2-k+1,1] = -2*pi*k/n
+    omega[(n-1)/2+k+1,1] = 2*pi*k/n   
+}
+omega[(n-1)/2+1,1] = 0
+```
+
+```{r finding all population autocov values}
+gammaY = matrix(0,n,1)
+for (k in seq(1,n)) {
+    for (t in seq(1,n+1-k)) {
+        gammaY[k] = gammaY[k] + (Y[t]-meanY)*(Y[t+k-1]-meanY)
+    }
+    gammaY[k] = gammaY[k]/(n+1-k)
+}
+rhoY = gammaY/gammaY[1]
+```
+
+
+1.8. Periodograms
+
+```{r Periodograms}
+raw.spec <- spec.pgram(Y, taper = 0)
+plot(raw.spec, log = "no")
+k = kernel("daniell", c(9, 9, 9))
+smooth.spec <- spec.pgram(Y, kernel = k, taper = 0)
+plot(smooth.spec, log="no")
+```
+
+```{r Periodogram from lecture}
+perio = matrix(0,n,1)
+K = length(omega)
+
+for (k in seq(1,K)) {
+    for (t in seq(1,n)) {
+        perio[k] = perio[k] + Y[t]*(cos(omega[k]*t) - 1i*sin(omega[k]*t)); #exp(-1i*t*omega(k))
+    }
+    perio[k] = abs(perio[k])/n;
+}
+
+plot(omega,perio,ylab='I_n(omega)',xlab='Frequency',main='Periodogram from lecture',type='l')
+```
+
+
+
+2. Models and Estimation
+========================
+Stationary AR(1)
+```{r}
+
+runs = 1
+T = 300
+theta = matrix(c(0 , 0.2 , 0.9),3,1)
+phi0  <- theta[1]
+phi1  <- theta[3]
+sige  <- theta[2]
+
+y    <- matrix(0,T,runs)
+eps  <- matrix(rnorm(T*runs,0,sige),T,runs)
+
+
+y[1] <- eps[1];
+for( t in seq(from=2,to=T) ){
+    y[t] <- phi0 + phi1*y[t-1] + eps[t]
+}
+
+
+thetaStart = matrix(c(0.2 , 0.15 , 0.6),3,1)
+```
+
+```{r}
+loglikeAR1 <- function(par){
+  
+  psi = par[3]
+#to find gammaY
+gammay = matrix(0,T,1)
+for (h in seq(from=1,to=T)){
+    gammay[h] = psi^h/(1-psi^2);
+}
+
+aDL = matrix()
+vDL = matrix()
+for (t in seq(from=3,to=T)){
+levAR1 <- levinson(y[1:t],p=t-1)
+aDL = c(aDL,levAR1$a,rep(0,T-t))
+vDL = c(vDL,levAR1$v)
+}
+aDL = matrix(aDL[2:89401], nrow = 300, ncol = 298)
+vDL = matrix(vDL[2:299],nrow = T-2,ncol = 1)
+
+yhatDL = matrix(0,T-2,1)
+for (t in seq(from=3,to=T)){
+  yhatDL[t] = t(aDL[1:T,t-2])%*%y
+}
+
+# loglike <- DLResiduals(gammay, y, TRUE)
+# return(-loglike)
+
+  objfunTemp = 0
+    for (t in seq(from = 3, to = T)){
+        objfunTemp = objfunTemp + log(abs(vDL[t-2])) + (y[t] - yhatDL[t])^2/vDL[t-2]
+    }
+loglike = -T/(2*pi) - 1/2*objfunTemp
+}
+```
+
+```{r}
+(y.mle <- optim(c(0.2 , 0.15 , 0.6), loglikeAR1))
+# (y.mle <- nlminb(par = c(0.2 , 0.15 , 0.6), loglikeAR1))
+
+
+
+# runs = 3000
+# ybetaTemp = matrix(0,1,2)
+# ybetavarTemp = matrix(0,2,2)
+# yvarTemp = 0
+# for (r in 1:runs) {
+#   # y.mle = armacoeff(y)
+#   y.mle = arima(y, order = c(1,0,0))
+#   ybetaTemp = ybetaTemp + t(matrix(y.mle$coef))
+#   ybetavarTemp = ybetavarTemp + y.mle$var.coef
+#   yvarTemp = yvarTemp + y.mle$sigma2 
+# }
+# ybeta = ybetaTemp/runs
+# ybetavar = ybetavarTemp/runs
+# yvar = yvarTemp/runs 
+```
+
+Stationary ARMA(1,1)
+```{r}
+phi0   <- 0.7
+phi1   <- 0.8
+theta  <- 0.6
+sige   <- 0.2
+
+y    <- rep(0,T)
+eps  <- rnorm(T,0,sige)
+y[1] <- phi0/(1-phi1)
+for( t in 2:T ){
+  y[t] <- phi0 + phi1 * y[t-1] + theta*eps[t-1] + eps[t]
+}
+
+plot( y , col='darkorange2' , t='l' , lwd=2 , tck = 0.02 )
+
+# armacoeff <- function(x) {
+# 
+#   l = length(x)
+#   param=c(mu=0, phi=0, theta=0)
+# 
+#   SSE <- function(param){
+#     mu=param[1]
+#     phi=param[2]
+#     theta=param[3]
+# 
+#     res = vector()
+#     res[1] = 0
+#     for(i in (2:l)){
+#       res[i] = (x[i]-mu) - phi*(x[i-1]-mu) - theta*res[i-1]
+#     }
+#     return(sum(res*res))
+#   }
+# 
+#   bla =nlminb(objective=SSE, start= param)
+#   return(bla)
+# 
+# }
+
+runs = 3000
+ybetaTemp = matrix(0,1,3)
+ybetavarTemp = matrix(0,3,3)
+yvarTemp = 0
+for (r in 1:runs) {
+  # y.mle = armacoeff(y)
+  y.mle = arima(y, order = c(1,0,1))
+  ybetaTemp = ybetaTemp + t(matrix(y.mle$coef))
+  ybetavarTemp = ybetavarTemp + y.mle$var.coef
+  yvarTemp = yvarTemp + y.mle$sigma2 
+}
+ybeta = ybetaTemp/runs
+ybetavar = ybetavarTemp/runs
+yvar = yvarTemp/runs 
+```
+
+Stationary MA(1)
+```{r}
+phi0   <- 0.5
+phi1   <- 0.6
+sige   <- 0.2
+
+y    <- rep(0,T)
+eps  <- rnorm(T,0,sige)
+y[1] <- phi0/(1-phi1)
+for( t in 2:T ){
+  y[t] <- phi0 + theta*eps[t-1] + eps[t]
+}
+
+plot( y , col='darkorange2' , t='l' , lwd=2 , tck = 0.02 )
+
+# armacoeff <- function(x) {
+# 
+#   l = length(x)
+#   param=c(mu=0, theta=0)
+# 
+#   SSE <- function(param){
+#     mu=param[1]
+#     theta=param[2]
+# 
+#     res = vector()
+#     res[1] = 0
+#     for(i in (2:l)){
+#       res[i] = (x[i]-mu) - theta*res[i-1]
+#     }
+#     return(sum(res*res))
+#   }
+# 
+#   bla =nlminb(objective=SSE, start= param)
+#   return(bla)
+# 
+# }
+
+runs = 3000
+ybetaTemp = matrix(0,1,2)
+ybetavarTemp = matrix(0,2,2)
+yvarTemp = 0
+for (r in 1:runs) {
+  # y.mle = armacoeff(y)
+  y.mle = arima(y, order = c(0,0,1))
+  ybetaTemp = ybetaTemp + t(matrix(y.mle$coef))
+  ybetavarTemp = ybetavarTemp + y.mle$var.coef
+  yvarTemp = yvarTemp + y.mle$sigma2 
+}
+ybeta = ybetaTemp/runs
+ybetavar = ybetavarTemp/runs
+yvar = yvarTemp/runs 
+```
+
+
+
+3. Forecasting
+==============
+```{r}
+#WN
+  y.mleWN = arima(Y, order = c(0,0,0))
+  ybetaWN = t(matrix(y.mleWN$coef))
+  ybetavarWN = y.mleWN$var.coef
+  yvarWN = y.mleWN$sigma2 
+  yloglikWN = y.mleWN$loglik
+  yAICWN = y.mleWN$aic
+#AR(1)
+  y.mleAR1 = arima(Y, order = c(1,0,0))
+  ybetaAR1 = t(matrix(y.mleAR1$coef))
+  ybetavarAR1 = y.mleAR1$var.coef
+  yvarAR1 = y.mleAR1$sigma2 
+  yloglikAR1 = y.mleAR1$loglik
+  yAICAR1 = y.mleAR1$aic
+  yBICAR1 = BIC(y.mleAR1)
+#ARMA(1,1)  
+  y.mleARMA11 = arima(Y, order = c(1,0,1))
+  ybetaARMA11 = t(matrix(y.mleARMA11$coef))
+  ybetavarARMA11 = y.mleARMA11$var.coef
+  yvarARMA11 = y.mleARMA11$sigma2 
+  yloglikARMA1 = y.mleARMA11$loglik
+  yAICARMA1 = y.mleARMA11$aic
+  yBICARMA1 = BIC(y.mleARMA11)
+#MA(1)
+  y.mleMA1 = arima(Y, order = c(0,0,1))
+  ybetaMA1 = t(matrix(y.mleMA1$coef))
+  ybetavarMA1 = y.mleMA1$var.coef
+  yvarMA1 = y.mleMA1$sigma2 
+  yloglikMA1 = y.mleMA1$loglik
+  yAICMA1 = y.mleMA1$aic
+  yBICMA1 = BIC(y.mleMA1)
+```
+
+
+```{r}
+#WN
+  YhatWN = Y[1:100]
+  for (t in 100:499) {
+    sdY = sd(YhatWN)
+    meanY = mean(YhatWN)
+    YhatWN[t+1] = rnorm(1,sd = sdY)
+  }
+  MSFEWN = sum((Y[101:T] - YhatWN[101:T])^2)/(T-100)
+  MAFEWN = abs(Y[101:T] - YhatWN[101:T])/(T-100)
+  dmWN.stat = dm.test(MSFEWN,MAFEWN)$statistic
+  dmWN.pval = dm.test(MSFEWN,MAFEWN)$p.value
+
+```
+
+```{r}
+#AR(1)  
+  YhatAR1 = Y[1:100]
+  for (t in 100:499) {
+    fit = arima0(YhatAR1[(t-99):t], order = c(1,0,0),  method = c("ML", "CSS"))
+    YhatAR1[t+1] = predict(fit,n.ahead = 1)$pred
+  }
+  MSFEAR1 = sum((Y[101:T] - YhatAR1[101:T])^2)/(T-100)
+  MAFEAR1 = abs(Y[101:T] - YhatAR1[101:T])/(T-100)
+  dmAR1.stat = dm.test(MSFEAR1,MAFEAR1)$statistic
+  dmAR1.pval = dm.test(MSFEAR1,MAFEAR1)$p.value
+```
+
+```{r}    
+#ARMA(1,1)  
+  YhatARMA11 = Y[1:100]
+  for (t in 100:499) {
+    fit = arima0(YhatARMA11[(t-99):t], order = c(1,0,1),  method = c("ML", "CSS"))
+    YhatARMA11[t+1] = predict(fit,n.ahead = 1)$pred
+  }
+  MSFEARMA11 = sum((Y[101:T] - YhatARMA11[101:T])^2)/(T-100)
+  MAFEARMA11 = abs(Y[101:T] - YhatARMA11[101:T])/(T-100)
+  dmARMA11.stat = dm.test(MSFEARMA11,MAFEARMA11)$statistic
+  dmARMA11.pval = dm.test(MSFEARMA11,MAFEARMA11)$p.value
+```
+
+```{r}  
+#MA(1,1)  
+  YhatMA1 = Y[1:100]
+  for (t in 100:499) {
+    fit = arima0(YhatMA1[(t-99):t], order = c(0,0,1),  method = c("ML", "CSS"))
+    YhatMA1[t+1] = predict(fit,n.ahead = 1)$pred
+  }
+  MSFEMA1 = sum((Y[101:T] - YhatMA1[101:T])^2)/(T-100)
+  MAFEMA1 = abs(Y[101:T] - YhatMA1[101:T])/(T-100)
+  dmMA1.stat = dm.test(MSFEMA1,MAFEMA1)$statistic
+  dmMA1.pval = dm.test(MSFEMA1,MAFEMA1)$p.value
+```
+
+
+
+4. Pockets of Predictability
+============================
+```{r}
+lAR1 = (YhatAR1[101:T] - Y[101:T]) - (YhatWN[101:T] - Y[101:T])
+lARMA11 = (YhatARMA11[101:T] - Y[101:T]) - (YhatWN[101:T] - Y[101:T])
+lMA1 = (YhatMA1[101:T] - Y[101:T]) - (YhatWN[101:T] - Y[101:T])
+```
+
+```{r}
+  lsAR1 = matrix(0,1,T-300)
+  lsARMA11 = matrix(0,1,T-300)
+  lsMA1 = matrix(0,1,T-300)
+
+for (s in 201:T-100) {
+  lsAR1[s-200] <- sum(lAR1[(s-100):(s+100)])
+  lsARMA11[s-200] <- sum(lARMA11[(s-100):(s+100)])
+  lsMA1[s-200] <- sum(lMA1[(s-100):(s+100)])
+}
+  xAR1 = matrix(1,1,T-300)
+  xAR1[(lsAR1<0)] = -1
+  xARMA11 = matrix(1,1,T-300)
+  xARMA11[(lsARMA11<0)] = -1
+  xMA1 = matrix(1,1,T-300)
+  xMA1[(lsMA1<0)] = -1
+```
+
+```{r}
+
+plot(xAR1,lsAR1)
+plot(xARMA11,lsARMA11)
+plot(xMA1,lsMA1)
+```
+
