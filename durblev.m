@@ -1,42 +1,44 @@
-function [loglike, YhatDL, vDL] = durblev(Y, gammaY, thetaStart)
+function [loglike, YhatDL, vDL] = durblev(Y, thetaStart)
 
 T = size(Y,1);
-meanY = mean(Y);
+rng('default')
 
-% disp('for GammaY')
-% GammaY = zeros(T,T);
-% for h = 0:T-1
-%     GammaTemp = gammaY(h+1)*ones(T-h,1);
-%     GammaY = GammaY + diag(GammaTemp,h) + diag(GammaTemp,-h);
+% %Generate the AR(1) process
+% y(1) = Y(1);
+% for t = 1:T-1
+%    y(t+1) = thetaStart(1) + thetaStart(3)*y(t) + epsY(t+1);  
 % end
+% 
+% rhoY = autocorr(y,T-1);
+% gammaY = abs(rhoY*var(y));
 
-% disp('for loglikeGammaY')
-% %Log likehood for GammaY
-% likeGammaY = ((2*pi())^(-T/2))*(det(GammaY)^(-1/2))*exp((-1/2)*(Y'*inv(GammaY)*Y));
+gammaY = gammaMA1(T, thetaStart);
 
 %Durbin Levinson
-disp('for DL')
+% disp('for DL')
 aDL = zeros(T,T);
 vDL = zeros(T,1);
 YhatDL = zeros(T,1);
-aDL(1,1) = gammaY(2)/gammaY(1);
+% aDL(1,1) = thetaStart(1);
+aDL(2,2) = gammaY(2)/gammaY(1);
 vDL(1,1) = gammaY(1);
-YhatDL(1,1) = Y(1);
-for t = 2:T
-    DLTemp = 0;
-    for j = 1:t-1
-        DLTemp = DLTemp + aDL(j,t-1)*gammaY(t-j);
-    end
+vDL(2,1) = gammaY(1)-gammaY(2);
+YhatDL(1,1) = aDL(1,1);
+YhatDL(2,1) = aDL(2,2)*Y(1);
+for t = 3:T
+    DLTemp = aDL(:,t-1)'*ones(T,1);
     aDL(t,t) = (gammaY(t)-DLTemp)/vDL(t-1,1);
-    aDL(1:t-1,t) = aDL(1:t-1,t-1) - aDL(t,t)*aDL(t-1:-1:1,t-1);
+%     aDL(t,t) = min(aDL(t,t),0.99);
+%     aDL(t,t) = max(aDL(t,t),-0.99);
+    aDL(2:t-1,t) = aDL(2:t-1,t-1) - aDL(t,t)*aDL(t-1:-1:2,t-1);
     vDL(t,1) = vDL(t-1,1)*(1-aDL(t,t)^2);
-    YhatDL(t,1) = aDL(:,t)'*Y;
+    YhatDL(t,1) = aDL(2:t,t)'*Y(1:t-1);
 end
 
 objfunTemp = 0;
-    for t = 1:n
+    for t = 1:T
+        if vDL(t)>0
         objfunTemp = objfunTemp + log(vDL(t)) + (Y(t) - YhatDL(t))^2/vDL(t);
+        end
     end
-loglike = -n/2/pi() - 1/2*objfunTemp;
-    
-disp('end')
+loglike = -(-T/(2*pi()) - 1/2*objfunTemp);
