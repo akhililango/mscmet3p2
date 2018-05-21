@@ -15,7 +15,15 @@ dates_ = table2array(data(:,2));
 ret_mean = mean(ret_);
 ret_var = var(ret_);
 ret_sd = sqrt(ret_var);
-Y = ret_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
+
+% Truncating the data (different from what the team did)
+up_bound = ones(5273,1);
+up_bound = ret_mean+4*ret_sd*up_bound;
+low_bound = ones(5273,1);
+low_bound = ret_mean-4*ret_sd*low_bound;
+Y = min(ret_, up_bound);
+Y = max(Y, low_bound);
+
 ty = dates_(~(ret_ > ret_mean+4*ret_sd | ret_ < ret_mean-4*ret_sd));
 n = size(Y,1);
 
