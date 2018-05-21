@@ -1,7 +1,18 @@
-function [loglike, YhatDL, vDL] = durblev(Y, gammaY, thetaStart)
+function [loglike, YhatDL, vDL] = durblev(Y, thetaStart, p, q)
 
 T = size(Y,1);
-meanY = mean(Y);
+rng('default')
+%residuals
+epsY = thetaStart(2)*randn(T);
+
+%Generate the AR(1) process
+y(1) = Y(1);
+for t = 1:T-1
+   y(t+1) = thetaStart(1) + thetaStart(3)*y(t) + epsY(t+1);  
+end
+
+rhoY = autocorr(y,T-1);
+gammaY = abs(rhoY*var(y));
 
 % disp('for GammaY')
 % GammaY = zeros(T,T);
@@ -21,7 +32,7 @@ vDL = zeros(T,1);
 YhatDL = zeros(T,1);
 aDL(1,1) = gammaY(2)/gammaY(1);
 vDL(1,1) = gammaY(1);
-YhatDL(1,1) = Y(1);
+YhatDL(1,1) = y(1);
 for t = 2:T
     DLTemp = 0;
     for j = 1:t-1
@@ -34,9 +45,9 @@ for t = 2:T
 end
 
 objfunTemp = 0;
-    for t = 1:n
-        objfunTemp = objfunTemp + log(vDL(t)) + (Y(t) - YhatDL(t))^2/vDL(t);
+    for t = 1:T-1
+        objfunTemp = objfunTemp + log(vDL(t)) + (y(t+1) - YhatDL(t+1))^2/vDL(t);
     end
-loglike = -n/2/pi() - 1/2*objfunTemp;
+loglike = -T/2/pi() - 1/2*objfunTemp;
     
 disp('end')
