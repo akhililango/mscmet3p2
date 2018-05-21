@@ -32,12 +32,13 @@ vDL = zeros(T,1);
 YhatDL = zeros(T,1);
 aDL(1,1) = gammaY(2)/gammaY(1);
 vDL(1,1) = gammaY(1);
-YhatDL(1,1) = y(1);
+YhatDL(1,1) = thetaStart(1);
 for t = 2:T
     DLTemp = 0;
     for j = 1:t-1
         DLTemp = DLTemp + aDL(j,t-1)*gammaY(t-j);
     end
+    v(t-1,1) = v(t-2,1)*(1-a(t-1,t-1)^2);
     aDL(t,t) = (gammaY(t)-DLTemp)/vDL(t-1,1);
     aDL(1:t-1,t) = aDL(1:t-1,t-1) - aDL(t,t)*aDL(t-1:-1:1,t-1);
     vDL(t,1) = vDL(t-1,1)*(1-aDL(t,t)^2);
