@@ -5,23 +5,22 @@ disp('AR1')
 rng('default')     
 
 % Monte-Carlo runs 
-runs = 1000;
+runs = 100;
 
 %AR(1) model specs
 n = 300;
 Y   = NaN(n,runs);
-theta = [0 ; 0.9 ; 0.2]; %[mu_y phi_1 sigma]
+theta = [0 ; 0.2 ; 0.9]; %[mu_y sigma phi_1]
 p = 1;
 q = 0;
 
 %residuals
-epsY = theta(3)*randn(n,runs);
+epsY = theta(2)*randn(n,runs);
 
 %Generate the AR(1) process
 Y(1,:) = epsY(1,:);
 for t = 1:n-1
-   Y(t+1,:) = theta(1) + theta(2)*Y(t,:) + epsY(t+1,:);
-   
+   Y(t+1,:) = theta(1) + theta(3)*Y(t,:) + epsY(t+1,:);  
 end
 
 % % To plot some stuff 
@@ -35,43 +34,44 @@ end
 
 
 % estimation in ARMA(p,q) model 
-thetaStart = [0.3 ; 0.5 ; 0.15]; 
+thetaStart = [0.2 ; 0.15 ; 0.6]; 
 options = optimset('TolX', 0.0001, 'Display', 'off', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
 
 %% DL/Inn and MLE
 
 for i = 1:runs
     
-%      objfun = @(thetaStart)(-loglikeARMA(thetaStart, Y(:,i), epsY(:,i), p, q));
-%      [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
+     objfun = @(thetaStart)(-loglikeAR1(Y, thetaStart, n));
+     [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
 %      disp(i)
 
 % ================
 
     % finding all sample autocov values
-    meanY = mean(Y(:,i));
-    gammaY = zeros(n,1);
-    for k = 1:n
-        for t = 1:n+1-k
-            gammaY(k) = gammaY(k) + (Y(t,i)-meanY)*(Y(t+k-1,i)-meanY);
-        end
-        gammaY(k) = gammaY(k)/(n+1-k);
-    end 
+%     meanY = mean(Y(:,i));
+%     gammaY = zeros(n,1);
+%     for k = 1:n
+%         for t = 1:n+1-k
+%             gammaY(k) = gammaY(k) + (Y(t,i)-meanY)*(Y(t+k-1,i)-meanY);
+%         end
+%         gammaY(k) = gammaY(k)/(n+1-k);
+%     end 
     
 %     [YhatDL(:,i), vDL(:,i)] = durblev(Y(:,i), gammaY);
 %     [YhatInn(:,i), vInn(:.i)] = innov(Y, gammaY);
 
-% DL
-%         objfun = @(thetaStart)(durblev(Y(:,i),gammaY,thetaStart));
-%Inn        
-        objfun = @(thetaStart)(innov(Y(:,i),gammaY,thetaStart));
-%MLE    
-        [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
-    disp(i)
+% % DL
+%         objfun = @(thetaStart)(durblev(Y(:,i)-thetaStart(1),thetaStart,1,0));
+% %Inn        
+% %         objfun = @(thetaStart)(innov(Y(:,i),gammaY,thetaStart));
+% %MLE    
+%         [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
 
+
+    if mod(i,100)==0
+        disp(i);
+    end
 end
-
-vDL = abs(vDL);
 
 %% MLE
 
@@ -90,7 +90,6 @@ vDL = abs(vDL);
 %% Display
 
 fprintf ('Log Likelihood value = %g \r', -dLogLik*runs);
-display(mean(theta_mle(1,:)));
+% display(mean(theta_mle(1,:)));
 display(mean(theta_mle(2,:)));
 display(mean(theta_mle(3,:)));
-histfit(theta_mle(2,:));
