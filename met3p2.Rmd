@@ -105,11 +105,31 @@ thetaStart = matrix(c(0.2 , 0.15 , 0.6),3,1)
 ```{r}
 loglikeAR1 <- function(par){
   
-  psi = par[3]
-#to find gammaY
-gammay = matrix(0,T,1)
-for (h in seq(from=1,to=T)){
-    gammay[h] = psi^h/(1-psi^2);
+#   psi = par[3]
+# #to find gammaY
+# gammay = matrix(0,T,1)
+# for (h in seq(from=1,to=T)){
+#     gammay[h] = psi^h/(1-psi^2);
+# }
+# 
+# loglike <- DLLoglikelihood(gammay, y, TRUE)
+# return(-loglike)
+
+####
+runs = 1
+T = 300
+#theta = matrix(c(0 , 0.2 , 0.9),3,1)
+phi0  <- par[1]
+phi1  <- par[3]
+sige  <- par[2]
+
+y    <- matrix(0,T,runs)
+eps  <- matrix(rnorm(T*runs,0,sige),T,runs)
+
+
+y[1] <- eps[1];
+for( t in seq(from=2,to=T) ){
+    y[t] <- phi0 + phi1*y[t-1] + eps[t]
 }
 
 aDL = matrix()
@@ -127,9 +147,6 @@ for (t in seq(from=3,to=T)){
   yhatDL[t] = t(aDL[1:T,t-2])%*%y
 }
 
-# loglike <- DLResiduals(gammay, y, TRUE)
-# return(-loglike)
-
   objfunTemp = 0
     for (t in seq(from = 3, to = T)){
         objfunTemp = objfunTemp + log(abs(vDL[t-2])) + (y[t] - yhatDL[t])^2/vDL[t-2]
@@ -139,7 +156,7 @@ loglike = -T/(2*pi) - 1/2*objfunTemp
 ```
 
 ```{r}
-(y.mle <- optim(c(0.2 , 0.15 , 0.6), loglikeAR1))
+(y.mle <- optim(c(0.5, 0.5, 0.5), loglikeAR1))
 # (y.mle <- nlminb(par = c(0.2 , 0.15 , 0.6), loglikeAR1))
 
 
