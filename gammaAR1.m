@@ -1,6 +1,6 @@
 function [gammaY] = gammaAR1(T, thetaStart)
 
-psi = thetaStart(3);
+psi = thetaStart(2);
 %to find gammaY
 gammaY = zeros(T,1);
 for h = 1:T

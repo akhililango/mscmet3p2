@@ -5,22 +5,22 @@ disp('MA1')
 rng('default')     
 
 % Monte-Carlo runs 
-runs = 10;
+runs = 100;
 
 %AR(1) model specs
-n = 300;
-Y   = NaN(n,runs);
-theta = [0 ; 0.2 ; -0.5]; %[mu_y sigma phi_1]
+T = 300;
+Y   = NaN(T,runs);
+theta = [0.2 ; -0.5]; %[mu_y sigma phi_1]
 p = 1;
 q = 0;
 
 %residuals
-epsY = theta(2)*randn(n,runs);
+epsY = theta(1)*randn(T,runs);
 
 %Generate the AR(1) process
 Y(1,:) = epsY(1,:);
-for t = 1:n-1
-   Y(t+1,:) = theta(1) + epsY(t+1,:) + theta(3)*epsY(t,:);
+for t = 1:T-1
+   Y(t+1,:) = epsY(t+1,:) + theta(2)*epsY(t,:);
 end
 
 % % To plot some stuff 
@@ -34,14 +34,14 @@ end
 
 
 % estimation in ARMA(p,q) model 
-thetaStart = [0.1 ; 0.1 ; -0.7]; 
+thetaStart = [0.1 ; -0.7]; 
 options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
 
 %% DL/Inn and MLE
 
 for i = 1:runs
     
-     objfun = @(thetaStart)(-loglikeMA1(Y(:,i), thetaStart, n));
+     objfun = @(thetaStart)(-loglikeMA1(Y(:,i), thetaStart, T));
      [theta_mle(:,i), dLogLik] = fminunc(objfun, thetaStart, options);
 %      disp(i)
 
@@ -89,6 +89,27 @@ end
 %% Display
 
 fprintf ('Log Likelihood value = %g \r', -dLogLik*runs);
-% display(mean(theta_mle(1,:)));
-display(mean(theta_mle(2,:)));
-display(mean(theta_mle(3,:)));
+theta_mle_1 = mean(theta_mle(1,:));
+theta_mle_2 = mean(theta_mle(2,:));
+display(theta_mle_1);
+display(theta_mle_2);
+
+SE_21 = theta_mle_2 + 1.96*theta_mle_1/sqrt(300);
+SE_22 = theta_mle_2 - 1.96*theta_mle_1/sqrt(300);
+
+f1 = figure;
+histfit(theta_mle(2,:),25,'kernel');
+line([theta_mle_2, theta_mle_2], ylim, 'LineWidth',1,'Color','r','LineStyle','-.')
+line ([theta_mle_2+1.96*theta_mle_1/sqrt(T) theta_mle_2+1.96*theta_mle_1/sqrt(T) NaN theta_mle_2-1.96*theta_mle_1/sqrt(T) theta_mle_2-1.96*theta_mle_1/sqrt(T)] , [ylim NaN   ylim],'LineWidth', 0.5, 'Color', 'g','Displayname','St. Dev.')
+
+%%
+
+%% Criteria Testing
+
+    Y_AIC(1) = loglikeAR1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 1);
+    Y_BIC(1) = loglikeAR1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 2);
+    Y_AICC(1) = loglikeAR1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 3);
+    
+    Y_AIC(2) = loglikeMA1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 1);
+    Y_BIC(2) = loglikeMA1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 2);
+    Y_AICC(2) = loglikeMA1(Y(:,1), [theta_mle_1 ; theta_mle_2], T, 3);

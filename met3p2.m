@@ -16,31 +16,31 @@ ret_mean = mean(ret_);
 ret_var = var(ret_);
 ret_sd = sqrt(ret_var);
 Y = ret_;
-Y = Y(ret_ > ret_mean+4*ret_sd) = ret_mean+4*ret_sd;
-Y = Y(ret_ < ret_mean-4*ret_sd) = ret_mean-4*ret_sd;
+Y(ret_ > ret_mean+4*ret_sd) = ret_mean+4*ret_sd;
+Y(ret_ < ret_mean-4*ret_sd) = ret_mean-4*ret_sd;
 ty = dates_;
-n = size(Y,1);
+T = size(Y,1);
 
 % defining Fourier Freq 
-omega = zeros(n,1);
-for k = (n-1)/2:-1:1
-    omega((n-1)/2-k+1,1) = -2*pi()*k/n;
-    omega((n-1)/2+k+1,1) = 2*pi()*k/n;    
+omega = zeros(T,1);
+for k = (T-1)/2:-1:1
+    omega((T-1)/2-k+1,1) = -2*pi()*k/T;
+    omega((T-1)/2+k+1,1) = 2*pi()*k/T;    
 end
-omega((n-1)/2+1,1) = 0;
+omega((T-1)/2+1,1) = 0;
 
 % finding all sample autocov values
 meanY = mean(Y);
-gammaY = zeros(n,1);
-for k = 1:n
-    for t = 1:n+1-k
+gammaY = zeros(T,1);
+for k = 1:T
+    for t = 1:T+1-k
         gammaY(k) = gammaY(k) + (Y(t)-meanY)*(Y(t+k-1)-meanY);
     end
-    gammaY(k) = gammaY(k)/(n+1-k);
+    gammaY(k) = gammaY(k)/(T+1-k);
 end
 rhoY = gammaY/gammaY(1); %sample autocorrelation
 
-rhoYtest = autocorr(Y,n-1);
+rhoYtest = autocorr(Y,T-1);
 gammaYtest = rhoYtest*var(Y);
 
 %% 1. Data Exploration
@@ -101,7 +101,7 @@ ty.FontWeight = 'bold';
 % PowerSpectrum=PlotFrequencySpectrum(datevar,Y,3,1,0);
 % hold on
 %% 1.8. Periodogram from lecture
-perio = zeros(n,1);
+perio = zeros(T,1);
 
 K = size(omega,1);
 % for k = 1:K
@@ -111,10 +111,10 @@ K = size(omega,1);
 % end
 
 for k= 1:K
-    for t = 1:n
+    for t = 1:T
         perio(k) = perio(k) + Y(t)*(cos(omega(k)*t) - i*sin(omega(k)*t)); %exp(-1i*t*omega(k))
     end
-    perio(k) = abs(perio(k))/n;
+    perio(k) = abs(perio(k))/T;
 end
 
 % plot
@@ -136,27 +136,164 @@ title('Periodogram')
 
 disp('graphs created')
 
-%% Pre-2. Algorithm on data (unnecessary)
-
-disp('testing algorithm')
-[YhatInn, vInn] = innov(Y, gammaY);
-[YhatDL, vDL] = durblev(Y,gammaY);
 
 %% 2. Models and Estimation
 
 disp('Section 2');
 
 
-%% 3. sdfsdf
+%% 3. Forecasting
 
 disp('Section 3');
 
+%% WN
 
+YhatWN = Y(1:100);
+for t = 100:T-1
+    theta_WN_1 = std(Y(t-99:t));
+    theta_WN_2 = mean(Y(t-99:t));
+%     display(theta_WN1_1);
+%     display(theta_WN1_2);
+
+%     SE_WN_1 = theta_WN1_2 + 1.96*theta_WN1_1/sqrt(100);
+%     SE_WN_2 = theta_WN1_2 - 1.96*theta_WN1_1/sqrt(100);
+
+    YhatWN(t+1) = theta_WN_2 + theta_WN_1*randn();
+    
+    MSFEWN(t-99) = sum((Y(101:t+1) - YhatWN(101:t+1)).^2)/(t-99);
+    MAFEWN(t-99) = sum(abs(Y(101:t+1) - YhatWN(101:t+1)))/(t-99);
+end
+
+%% AR(1)
+
+YhatAR1 = Y(1:100);
+for t = 100:T-1
+    thetaStart = [0.1 ; 0.5]; 
+    options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
+    objfun = @(thetaStart)(-loglikeAR1(Y(t-99:t), thetaStart, 100));
+    [theta_AR1, dLogLik] = fminunc(objfun, thetaStart, options);
+
+    theta_AR1_1 = theta_AR1(1);
+    theta_AR1_2 = theta_AR1(2);
+    % display(theta_AR1_1);
+    % display(theta_AR1_2);
+    % 
+    % SE_AR1_21 = theta_AR1_2 + 1.96*theta_AR1_1/sqrt(100);
+% SE_AR1_22 = theta_AR1_2 - 1.96*theta_AR1_1/sqrt(100);
+
+    Y_AIC(1,t-99) = loglikeAR1(Y(t-99:t), [theta_AR1_1 ; theta_AR1_2], 100, 1);
+    Y_BIC(1,t-99) = loglikeAR1(Y(t-99:t), [theta_AR1_1 ; theta_AR1_2], 100, 2);
+    Y_AICC(1,t-99) = loglikeAR1(Y(t-99:t), [theta_AR1_1 ; theta_AR1_2], 100, 3);
+
+    YhatAR1(t+1) = theta_AR1_2*YhatAR1(t);
+    
+     MSFEAR1(t-99) = sum((Y(101:t+1) - YhatAR1(101:t+1)).^2)/(t-99);  % or /T
+     MAFEAR1(t-99) = sum(abs(Y(101:t+1) - YhatAR1(101:t+1)))/(t-99);  % or /T
+end
+ 
+% dmAR1.stat = dm.test(MSFEAR1,MAFEAR1)$statistic
+% dmAR1.pval = dm.test(MSFEAR1,MAFEAR1)$p.value
+
+%% MA(1)
+
+    YhatMA1 = Y(1:100);
+for t = 100:T-1
+    thetaStart = [0.1 ; 0.5]; 
+    options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
+    objfun = @(thetaStart)(-loglikeMA1(Y(t-99:t), thetaStart, 100));
+    [theta_MA1, dLogLik] = fminunc(objfun, thetaStart, options);
+
+    theta_MA1_1 = theta_MA1(1);
+    theta_MA1_2 = theta_MA1(2);
+    % display(theta_MA1_1);
+    % display(theta_MA1_2);
+    % 
+    % SE_MA1_21 = theta_MA1_2 + 1.96*theta_MA1_1/sqrt(100);
+    % SE_MA1_22 = theta_MA1_2 - 1.96*theta_MA1_1/sqrt(100);
+
+    Y_AIC(2,t-99) = loglikeMA1(Y(t-99:t), [theta_MA1_1 ; theta_MA1_2], 100, 1);
+    Y_BIC(2,t-99) = loglikeMA1(Y(t-99:t), [theta_MA1_1 ; theta_MA1_2], 100, 2);
+    Y_AICC(2,t-99) = loglikeMA1(Y(t-99:t), [theta_MA1_1 ; theta_MA1_2], 100, 3);
+    
+
+    YhatMA1(t+1) = theta_MA1_2*(theta_MA1_2 + theta_MA1_1*randn());
+    
+    MSFEMA1(t-99) = sum((Y(101:t+1) - YhatMA1(101:t+1)).^2)/(t-99);  % or /T
+    MAFEMA1(t-99) = sum(abs(Y(101:t+1) - YhatMA1(101:t+1)))/(t-99);  % or /T
+end
+
+    
+%% ARMA(1,1)
+
+YhatARMA11 = Y(1:100);
+for t = 100:T-1
+    thetaStart = [0.1 ; 0.4 ; -0.5]; 
+    options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
+    objfun = @(thetaStart)(-loglikeARMA11(Y(t-99:t), thetaStart, 100));
+    [theta_ARMA11, dLogLik] = fminunc(objfun, thetaStart, options);
+
+    theta_ARMA11_1 = theta_ARMA11(1);
+    theta_ARMA11_2 = theta_ARMA11(2);
+    theta_ARMA11_3 = theta_ARMA11(3);
+    % display(theta_ARMA11_1);
+    % display(theta_ARMA11_2);
+    % display(theta_ARMA11_3);
+    % 
+    % SE_ARMA11_21 = theta_ARMA11_2 + 1.96*theta_ARMA11_1/sqrt(100);
+    % SE_ARMA11_22 = theta_ARMA11_2 - 1.96*theta_ARMA11_1/sqrt(100);
+    % SE_ARMA11_31 = theta_ARMA11_3 + 1.96*theta_ARMA11_1/sqrt(100);
+    % SE_ARMA11_32 = theta_ARMA11_3 - 1.96*theta_ARMA11_1/sqrt(100);
+
+
+    Y_AIC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 1);
+    Y_BIC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 2);
+    Y_AICC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 3);
+    
+    YhatARMA11(t+1) = theta_ARMA11_2*YhatARMA11(t) + theta_ARMA11_3*(theta_ARMA11_3 + theta_ARMA11_1*randn()); %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ???????????
+    
+    MSFEARMA11(t-99) = sum((Y(101:t+1) - YhatARMA11(101:t+1)).^2)/(t-99);  % or /T
+    MAFEARMA11(t-99) = sum(abs(Y(101:t+1) - YhatARMA11(101:t+1)))/(t-99);  % or /T
+end
+
+  
+%% DM Test
+
+[dm_WN_stat, dm_WN_pval] = dieboldmariano(MSFEWN,MAFEWN);
+[dm_AR1_stat, dm_AR1_pval] = dieboldmariano(MSFEAR1,MAFEAR1);
+[dm_MA1_stat, dm_MA1_pval] = dieboldmariano(MSFEMA1,MAFEMA1);
+[dm_ARMA11_stat, dm_ARMA11_pval] = dieboldmariano(MSFEARMA11,MAFEARMA11);
+  
 %% 4 Pockets of Predictability
 
 disp('Section 4');
 
+rl_AR1 = YhatAR1(101:T) - YhatWN(101:T);
+rl_MA1 = YhatMA1(101:T) - YhatWN(101:T);
+% rl_ARMA11 = YhatARMA11(101:T) - YhatWN(101:T);
 
+  lsAR1 = zeros(1,T-301);
+  lsMA1 = zeros(1,T-301);
+%   lsARMA11 = zeros(1,T-300);
+
+for s = 1:T-301
+  lsAR1(1,s) = sum(rl_AR1(s:s+201));
+  lsMA1(1,s) = sum(rl_MA1(s:s+201));
+%   lsARMA11(s-200) = sum(lARMA11((s-100):(s+100)));
+end
+
+  xAR1 = ones(1,T-301);
+  xAR1(lsAR1<0) = -1;
+  xMA1 = ones(1,T-301);
+  xMA1(lsMA1<0) = -1;
+%   xARMA11 = ones(1,T-300);
+%   xARMA11(lsARMA11<0) = -1;
+
+f1 = figure(1);
+plot(xAR1,lsAR1);
+f2 = figure(2);
+plot(xMA1,lsMA1);
+% f3 = figure(3);
+% plot(xARMA11,lsARMA11);
 %%
 %Save all plots
 saveas(f11,'Figure 1.1.jpeg');
