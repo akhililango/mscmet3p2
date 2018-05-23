@@ -158,19 +158,22 @@ for t = 100:T-1
 %     SE_WN_1 = theta_WN1_2 + 1.96*theta_WN1_1/sqrt(100);
 %     SE_WN_2 = theta_WN1_2 - 1.96*theta_WN1_1/sqrt(100);
 
-    YhatWN(t+1) = theta_WN_2 + theta_WN_1*randn();
-    
-    MSFEWN(t-99) = sum((Y(101:t+1) - YhatWN(101:t+1)).^2)/(t-99);
-    MAFEWN(t-99) = sum(abs(Y(101:t+1) - YhatWN(101:t+1)))/(t-99);
+    YhatWN(t+1) = theta_WN_2;
 end
 
+%     MSFEWN(t-99) = sum((Y(101:t+1) - YhatWN(101:t+1)).^2)/(t-99);
+%     MAFEWN(t-99) = sum(abs(Y(101:t+1) - YhatWN(101:t+1)))/(t-99);
+
+    MSFEWN = sum((Y(101:T) - YhatWN(101:T)).^2)/(T-100);
+    MAFEWN = sum(abs(Y(101:T) - YhatWN(101:T)))/(T-100);
+    
 %% AR(1)
 
 YhatAR1 = Y(1:100);
 for t = 100:T-1
     thetaStart = [0.1 ; 0.5]; 
     options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
-    objfun = @(thetaStart)(-loglikeAR1(Y(t-99:t), thetaStart, 100));
+    objfun = @(thetaStart)(-loglikeAR1(Y(t-99:t)-mean(Y(t-99:t)), thetaStart, 100));
     [theta_AR1, dLogLik] = fminunc(objfun, thetaStart, options);
 
     theta_AR1_1 = theta_AR1(1);
@@ -186,11 +189,14 @@ for t = 100:T-1
     Y_AICC(1,t-99) = loglikeAR1(Y(t-99:t), [theta_AR1_1 ; theta_AR1_2], 100, 3);
 
     YhatAR1(t+1) = theta_AR1_2*YhatAR1(t);
-    
-     MSFEAR1(t-99) = sum((Y(101:t+1) - YhatAR1(101:t+1)).^2)/(t-99);  % or /T
-     MAFEAR1(t-99) = sum(abs(Y(101:t+1) - YhatAR1(101:t+1)))/(t-99);  % or /T
 end
  
+%      MSFEAR1(t-99) = sum((Y(101:t+1) - YhatAR1(101:t+1)).^2)/(t-99);  % or /T
+%      MAFEAR1(t-99) = sum(abs(Y(101:t+1) - YhatAR1(101:t+1)))/(t-99);  % or /T
+     
+     MSFEAR1 = sum((Y(101:T) - YhatAR1(101:T)).^2)/(T-100);  % or /T
+     MAFEAR1 = sum(abs(Y(101:T) - YhatAR1(101:T)))/(T-100);  % or /T
+     
 % dmAR1.stat = dm.test(MSFEAR1,MAFEAR1)$statistic
 % dmAR1.pval = dm.test(MSFEAR1,MAFEAR1)$p.value
 
@@ -200,7 +206,7 @@ end
 for t = 100:T-1
     thetaStart = [0.1 ; 0.5]; 
     options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
-    objfun = @(thetaStart)(-loglikeMA1(Y(t-99:t), thetaStart, 100));
+    objfun = @(thetaStart)(-loglikeMA1(Y(t-99:t)-mean(Y(t-99:t)), thetaStart, 100));
     [theta_MA1, dLogLik] = fminunc(objfun, thetaStart, options);
 
     theta_MA1_1 = theta_MA1(1);
@@ -218,10 +224,13 @@ for t = 100:T-1
 
     YhatMA1(t+1) = theta_MA1_2*(theta_MA1_2 + theta_MA1_1*randn());
     
-    MSFEMA1(t-99) = sum((Y(101:t+1) - YhatMA1(101:t+1)).^2)/(t-99);  % or /T
-    MAFEMA1(t-99) = sum(abs(Y(101:t+1) - YhatMA1(101:t+1)))/(t-99);  % or /T
+%     MSFEMA1(t-99) = sum((Y(101:t+1) - YhatMA1(101:t+1)).^2)/(t-99);  % or /T
+%     MAFEMA1(t-99) = sum(abs(Y(101:t+1) - YhatMA1(101:t+1)))/(t-99);  % or /T
 end
-
+    
+        
+    MSFEMA1 = sum((Y(101:T) - YhatMA1(101:T)).^2)/(T-100);  % or /T
+    MAFEMA1 = sum(abs(Y(101:T) - YhatMA1(101:T)))/(T-100);  % or /T
     
 %% ARMA(1,1)
 
@@ -229,12 +238,23 @@ YhatARMA11 = Y(1:100);
 for t = 100:T-1
     thetaStart = [0.1 ; 0.4 ; -0.5]; 
     options = optimset('TolX', 0.0001, 'Display', 'iter-detailed', 'Maxiter', 5000, 'MaxFunEvals', 5000, 'LargeScale', 'off', 'HessUpdate', 'bfgs');
-    objfun = @(thetaStart)(-loglikeARMA11(Y(t-99:t), thetaStart, 100));
-    [theta_ARMA11, dLogLik] = fminunc(objfun, thetaStart, options);
+    objfun = @(thetaStart)(-loglikeARMA11(Y(t-99:t)-mean(Y(t-99:t)), thetaStart, 100));
+    [theta_ARMA11, dLogLikARMA11] = fminunc(objfun, thetaStart, options);
 
+        
+%     res = Hevia_arma_mle(Y, 1, 1);
+%     theta_mle_ARMA11(1) = res.sigma;
+%     theta_mle_ARMA11(2) = 2*normcdf(res.ar)-1;
+%     theta_mle_ARMA11(3) = 2*normcdf(res.ma)-1;
+%     invhess = inv(res.hess);
+%     SEARMA11 = 1.96*invhess(1,1);
+%     SEARMA11th = 1.96*invhess(2,2);
+%     dLogLikARMA11 = res.loglike;
+%     
     theta_ARMA11_1 = theta_ARMA11(1);
     theta_ARMA11_2 = theta_ARMA11(2);
     theta_ARMA11_3 = theta_ARMA11(3);
+    loglike = dLogLikARMA11;
     % display(theta_ARMA11_1);
     % display(theta_ARMA11_2);
     % display(theta_ARMA11_3);
@@ -244,24 +264,25 @@ for t = 100:T-1
     % SE_ARMA11_31 = theta_ARMA11_3 + 1.96*theta_ARMA11_1/sqrt(100);
     % SE_ARMA11_32 = theta_ARMA11_3 - 1.96*theta_ARMA11_1/sqrt(100);
 
-
-    Y_AIC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 1);
-    Y_BIC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 2);
-    Y_AICC(3,t-99) = loglikeARMA11(Y(t-99:t), [theta_ARMA11_1 ; theta_ARMA11_2 ; theta_ARMA11_3], 100, 3);
+    Y_AIC(3) = 2*loglikeARMA11 + 6;
+    Y_BIC(3) = 2*loglikeARMA11 + 6*T/(T-3);
+    Y_AICC(3) = 2*loglikeARMA11 + 4*log(T)/T;
     
     YhatARMA11(t+1) = theta_ARMA11_2*YhatARMA11(t) + theta_ARMA11_3*(theta_ARMA11_3 + theta_ARMA11_1*randn()); %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ???????????
     
-    MSFEARMA11(t-99) = sum((Y(101:t+1) - YhatARMA11(101:t+1)).^2)/(t-99);  % or /T
-    MAFEARMA11(t-99) = sum(abs(Y(101:t+1) - YhatARMA11(101:t+1)))/(t-99);  % or /T
+%     MSFEARMA11(t-99) = sum((Y(101:t+1) - YhatARMA11(101:t+1)).^2)/(t-99);  % or /T
+%     MAFEARMA11(t-99) = sum(abs(Y(101:t+1) - YhatARMA11(101:t+1)))/(t-99);  % or /T
 end
-
+    
+    MSFEARMA11 = sum((Y(101:T) - YhatARMA11(101:T)).^2)/(T-100);  % or /T
+    MAFEARMA11 = sum(abs(Y(101:T) - YhatARMA11(101:T)))/(T-100);  % or /T
   
 %% DM Test
 
-[dm_WN_stat, dm_WN_pval] = dieboldmariano(MSFEWN,MAFEWN);
-[dm_AR1_stat, dm_AR1_pval] = dieboldmariano(MSFEAR1,MAFEAR1);
-[dm_MA1_stat, dm_MA1_pval] = dieboldmariano(MSFEMA1,MAFEMA1);
-[dm_ARMA11_stat, dm_ARMA11_pval] = dieboldmariano(MSFEARMA11,MAFEARMA11);
+[dm_WN_stat, dm_WN_pval] = dieboldmariano(MSFEWN,MAFEWN,perio);
+[dm_AR1_stat, dm_AR1_pval] = dieboldmariano(MSFEAR1,MAFEAR1,perio);
+[dm_MA1_stat, dm_MA1_pval] = dieboldmariano(MSFEMA1,MAFEMA1,perio);
+[dm_ARMA11_stat, dm_ARMA11_pval] = dieboldmariano(MSFEARMA11,MAFEARMA11,perio);
   
 %% 4 Pockets of Predictability
 
@@ -304,7 +325,7 @@ scatter(xMA1,lsMA1);
 % [dm_ARMA11_stat, dm_ARMA11_pval] = dieboldmariano(MSFEARMA11,MAFEARMA11);
 
 disp('No, they didnt ouperform. The conditional mean model is hard to beat in out-of-sample forecasating.');
-disp('The DM test should never be used in this way because it is for Asymptotic testing and this has not been corrected for finite samples');
+disp('The DM test should never be used in this way because it is for Asymptotic testing and has not been corrected for finite samples');
 %%
 %Save all plots
 saveas(f11,'Figure 1.1.jpeg');

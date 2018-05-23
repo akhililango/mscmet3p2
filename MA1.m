@@ -7,7 +7,7 @@ rng('default')
 % Monte-Carlo runs 
 runs = 100;
 
-%AR(1) model specs
+% MA(1) model specs
 T = 300;
 Y   = NaN(T,runs);
 theta = [0.2 ; -0.5]; %[mu_y sigma phi_1]
@@ -17,7 +17,7 @@ q = 0;
 %residuals
 epsY = theta(1)*randn(T,runs);
 
-%Generate the AR(1) process
+%Generate the MA(1) process
 Y(1,:) = epsY(1,:);
 for t = 1:T-1
    Y(t+1,:) = epsY(t+1,:) + theta(2)*epsY(t,:);

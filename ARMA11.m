@@ -1,7 +1,7 @@
 clear all
 close all
 clc
-disp('ARMA1')
+disp('ARMA11')
 rng('default')  
 
 % Monte-Carlo runs 

@@ -1,16 +1,17 @@
-function [stat, pval] = dieboldmariano(msfe,mafe)
+function [stat, pval] = dieboldmariano(msfe,mafe,perio)
 
 d = msfe - mafe;
 dmu = mean(d);
 dvar = var(d);
 n = size(d,2);
-gammad = dvar * autocorr(d,n-1);
 
+h = 4;
+omz = 0;
 % ind = zeros(n,1);
-% for t = 1:n
-%     if t/
-% omz = 2*sum(gammad(ind<=1))-gammad(1); 
-% end
+for m = -h:h
+    omz = omz + (h+1-abs(m))/(h+1)^2 * perio(0); 
+end
+omz = omz/(2*pi);
 
 stat = dmu/(sqrt(dvar/n));
 
