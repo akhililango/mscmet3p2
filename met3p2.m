@@ -291,9 +291,9 @@ end
 %   xARMA11(lsARMA11<0) = -1;
 
 f41 = figure;
-plot(xAR1,lsAR1);
+scatter(xAR1,lsAR1);
 f42 = figure;
-plot(xMA1,lsMA1);
+scatter(xMA1,lsMA1);
 % f43 = figure;
 % plot(xARMA11,lsARMA11);
 
