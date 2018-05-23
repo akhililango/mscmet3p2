@@ -72,7 +72,7 @@ title('Returns: Partial Autocorrelation')
 
 f14 = figure;
 %set(f14,'Visible','off');
-histfit(Y,25,'kernel');
+histfit(Y,25,'kernel')
 line([mean(Y), mean(Y)], ylim, 'LineWidth',1,'Color','r','LineStyle','-.')
 line ([mean(Y)+std(Y) mean(Y)+std(Y) NaN mean(Y)-std(Y) ...
     mean(Y)-std(Y)] , [ylim NaN   ylim],'LineWidth', 0.5, ...
@@ -281,19 +281,30 @@ for s = 1:T-301
 %   lsARMA11(s-200) = sum(lARMA11((s-100):(s+100)));
 end
 
-  xAR1 = ones(1,T-301);
+  xAR1 = zeros(1,T-301);
+  xAR1(lsAR1>0) = 1;
   xAR1(lsAR1<0) = -1;
-  xMA1 = ones(1,T-301);
+  xMA1 = zeros(1,T-301);
+  xMA1(lsMA1>0) = 1;
   xMA1(lsMA1<0) = -1;
 %   xARMA11 = ones(1,T-300);
 %   xARMA11(lsARMA11<0) = -1;
 
-f1 = figure(1);
+f41 = figure;
 plot(xAR1,lsAR1);
-f2 = figure(2);
+f42 = figure;
 plot(xMA1,lsMA1);
-% f3 = figure(3);
+% f43 = figure;
 % plot(xARMA11,lsARMA11);
+
+%% DM Test
+
+[dms_AR1_stat, dms_AR1_pval] = dieboldmariano(MSFEAR1((lsAR1 < -200|lsAR1 > 200)),MAFEAR1((lsAR1 < -200|lsAR1 > 200)));
+[dms_MA1_stat, dms_MA1_pval] = dieboldmariano(MSFEMA1((lsMA1 < -200|lsMA1 > 200)),MAFEMA1((lsMA1 < -200|lsMA1 > 200)));
+% [dm_ARMA11_stat, dm_ARMA11_pval] = dieboldmariano(MSFEARMA11,MAFEARMA11);
+
+disp('No, they didnt ouperform. The conditional mean model is hard to beat in out-of-sample forecasating.');
+disp('The DM test should never be used in this way because it is for Asymptotic testing and this has not been corrected for finite samples');
 %%
 %Save all plots
 saveas(f11,'Figure 1.1.jpeg');
@@ -301,6 +312,9 @@ saveas(f12,'Figure 1.2.jpeg');
 saveas(f13,'Figure 1.3.jpeg');
 saveas(f14,'Figure 1.4.jpeg');
 saveas(f15,'Figure 1.5.jpeg');
+saveas(f41,'Figure 4.1.jpeg');
+saveas(f42,'Figure 4.2.jpeg');
+% saveas(f43,'Figure 4.3.jpeg');
 
 % saveas(f211,'Figure 2.1.1.png');
 % saveas(f212,'Figure 2.1.2.png');
